@@ -131,6 +131,9 @@ class WeaverBrain:
         # 6. Peripherals
         await self._start_peripherals()
         
+        # 6.5. Keepalive (keeps STT/TTS/LLM warm)
+        await self._start_keepalive()
+        
         # 7. Web dashboard (last — depends on all above)
         await self._start_web()
         
@@ -262,6 +265,22 @@ class WeaverBrain:
             from weaver.peripherals.telemetry import TelemetryLogger
             self.modules["telemetry"] = TelemetryLogger()
             await self.modules["telemetry"].start()
+    
+    async def _start_keepalive(self) -> None:
+        """Initialize the keepalive manager for STT, TTS, and LLM."""
+        if "keepalive" not in self.config.enabled_modules:
+            return
+        if not self.config.keepalive.enabled:
+            return
+        
+        from weaver.keepalive import create_default_keepalive_manager
+        km = create_default_keepalive_manager()
+        await km.start()
+        self.modules["keepalive"] = km
+        
+        # Inject keepalive reference into cortex if available
+        if "cortex" in self.modules:
+            self.modules["cortex"].keepalive = km
     
     async def _start_web(self) -> None:
         """Start the web dashboard in a background task."""

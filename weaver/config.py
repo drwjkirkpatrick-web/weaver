@@ -273,6 +273,30 @@ class ThermalConfig(BaseModel):
     llm_throttle_temp: float = 70.0  # Skip non-essential LLM calls
 
 
+class PhraseCacheConfig(BaseModel):
+    """Local phrase cache for instant robot responses."""
+    enabled: bool = True
+    db_path: str = "weaver/data/phrases.db"
+    # When True, learned phrases from LLM are saved to cache
+    learn_new_phrases: bool = True
+    # Minimum similarity for fuzzy matching (0.0-1.0)
+    fuzzy_min_similarity: float = 0.4
+    # How many recent phrases to exclude from selection (variety)
+    variety_window: int = 20
+
+
+class KeepaliveConfig(BaseModel):
+    """Keepalive pings for STT, TTS, and local LLM."""
+    enabled: bool = True
+    # Ollama Local LLM keepalive (seconds between pings)
+    ollama_local_interval: float = 120.0   # Every 2 minutes (active mode)
+    ollama_local_idle_interval: float = 300.0  # Every 5 minutes (fallback mode)
+    # Whisper STT keepalive
+    whisper_interval: float = 300.0       # Every 5 minutes
+    # Edge TTS keepalive
+    edge_tts_interval: float = 600.0      # Every 10 minutes
+
+
 class TelemetryConfig(BaseModel):
     """Wi-Fi telemetry and remote logging."""
     enabled: bool = True
@@ -321,11 +345,14 @@ class MainConfig(BaseSettings):
     web: WebConfig = Field(default_factory=WebConfig)
     thermal: ThermalConfig = Field(default_factory=ThermalConfig)
     telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
+    phrase_cache: PhraseCacheConfig = Field(default_factory=PhraseCacheConfig)
+    keepalive: KeepaliveConfig = Field(default_factory=KeepaliveConfig)
     
     # Enabled subsystems (toggle individual modules)
     enabled_modules: list[str] = Field(default=[
         "servo", "gait", "safety", "camera", "imu", "ultrasonic",
         "battery", "oled", "led", "voice", "cortex", "web", "thermal", "telemetry",
+        "phrase_cache", "keepalive",
     ])
 
 

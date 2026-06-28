@@ -209,6 +209,12 @@ class Cortex:
         # World model — updated by sensor handlers
         self.world_model: WorldModel = WorldModel()
 
+        # Phrase cache for instant responses (no LLM call needed)
+        self.phrase_cache: Any = None  # Initialized in start() if enabled
+
+        # Keepalive manager reference (set by main.py or injected)
+        self.keepalive: Any = None
+
         # Cortex state
         self.state: CortexState = CortexState.WAITING
         self._decision_count: int = 0
@@ -248,6 +254,14 @@ class Cortex:
             f"🧠 Cortex starting — mode: {self.config.mode.value}, "
             f"hardware: {self.hardware_mode.value}"
         )
+
+        # ─── Initialize phrase cache ───
+        if self.main_config.phrase_cache.enabled:
+            from weaver.brain.phrase_cache import PhraseCache
+            self.phrase_cache = PhraseCache(
+                db_path=self.main_config.phrase_cache.db_path,
+            )
+            await self.phrase_cache.start()
 
         # ─── Initialize LLM bridge ───
         await self._init_llm_bridge()
@@ -292,6 +306,9 @@ class Cortex:
 
         if self.intent_parser:
             await self.intent_parser.stop()
+
+        if self.phrase_cache:
+            await self.phrase_cache.stop()
 
         logger.info(
             f"Cortex stopped (decisions={self._decision_count}, "
@@ -420,6 +437,19 @@ class Cortex:
         safety_action = self._check_safety_rules()
         if safety_action:
             # Immediate safety action overrides everything
+            # Try phrase cache for instant spoken response
+            if self.phrase_cache:
+                situation = self._world_model_dict()
+                situation["estop_active"] = self.bus.estop_active
+                situation["collision_imminent"] = safety_action.get("reason") == "collision_imminent"
+                phrase = self.phrase_cache.get_contextual_phrase(situation)
+                if phrase:
+                    # Publish the phrase for TTS to speak
+                    await self.bus.publish(Event(
+                        type=EventType.VOICE_SPEAKING,
+                        data={"text": phrase, "active": True, "source": "phrase_cache"},
+                        source="cortex",
+                    ))
             await self._execute_action(safety_action, source="safety_rule")
             return
 
@@ -430,7 +460,45 @@ class Cortex:
             await self._process_voice_command(voice_cmd)
             return
 
-        # ─── Step 3: LLM evaluation (if available) ───
+        # ─── Step 2.5: Check phrase cache before LLM ───
+        # Most situations have a cached response — only call the LLM
+        # for novel or complex situations that the cache can't handle.
+        if self.phrase_cache and self._should_consult_llm():
+            situation = self._world_model_dict()
+            situation["voice_command"] = self._pending_voice_command
+            situation["motion_completed"] = (
+                self.world_model.last_motion == "stop"
+                and self.state == CortexState.WAITING
+            )
+            
+            cached_phrase = self.phrase_cache.get_contextual_phrase(situation)
+            if cached_phrase:
+                # Cache hit — instant response, no LLM needed
+                self._decision_count += 1
+                self._last_decision_time = time.time()
+                
+                await self.bus.publish(Event(
+                    type=EventType.CORTEX_DECISION,
+                    data={
+                        "action": {"direction": "stop", "speed": 0.0},
+                        "source": "phrase_cache",
+                        "phrase": cached_phrase,
+                        "world_model": self._world_model_dict(),
+                    },
+                    source="cortex",
+                ))
+                
+                # Publish phrase for TTS
+                await self.bus.publish(Event(
+                    type=EventType.VOICE_SPEAKING,
+                    data={"text": cached_phrase, "active": True, "source": "phrase_cache"},
+                    source="cortex",
+                ))
+                
+                logger.debug(f"📝 Using cached phrase: {cached_phrase[:50]}")
+                return  # Skip LLM call entirely
+
+        # ─── Step 3: LLM evaluation (if cache missed) ───
         # Only call LLM if the situation warrants thinking.
         # We don't call the LLM every 0.5s — that's wasteful.
         # Only call when:
@@ -550,6 +618,22 @@ class Cortex:
                     "llm_response": response[:200],
                     "action": action,
                 })
+
+                # Learn: save novel LLM responses to phrase cache
+                if self.phrase_cache and self.main_config.phrase_cache.learn_new_phrases:
+                    # Determine intent from the situation
+                    situation = self._world_model_dict()
+                    intent = self.phrase_cache._classify_intent(situation) or "learned"
+                    
+                    # Only cache if the response is short enough to be a phrase
+                    # (not a full paragraph — those are too specific to reuse)
+                    if len(response) < 200 and response.strip():
+                        self.phrase_cache.add_phrase(
+                            text=response.strip(),
+                            category="learned",
+                            intent=intent,
+                            priority=4,  # Lower priority than seeded phrases
+                        )
 
                 await self._execute_action(action, source="llm")
             else:
