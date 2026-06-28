@@ -1,0 +1,98 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "weaver"
+version = "0.1.0"
+description = "Hermes-powered robot brain for Adeept RaspClaws Hexapod Spider Robot on Raspberry Pi 5"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Walker Kirkpatrick", email = "walker@example.com"},
+]
+keywords = ["robotics", "hexapod", "raspberry-pi", "ai", "ollama", "hermes"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Robotics",
+]
+
+dependencies = [
+    # Web framework
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "websockets>=12.0",
+    # Async support
+    "aiohttp>=3.9.0",
+    "aiofiles>=23.2.0",
+    # Config + validation
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    # LLM bridges
+    "ollama>=0.1.7",
+    "httpx>=0.25.0",
+    # Hardware (graceful optional — mock mode if absent)
+    # These install on dev machines but only work on the Pi:
+    # "lgpio>=0.2.2",         # GPIO (Pi 5 native)
+    # "smbus2>=0.4.3",        # I2C
+    # "picamera2>=0.3.12",    # Pi Camera
+    # "adafruit-circuitpython-pca9685>=3.4.0",
+    # "adafruit-circuitpython-mpu6050>=3.0.0",
+    # "adafruit-circuitpython-ssd1306>=2.3.0",
+    # "rpi_ws2812>=4.0.0",
+    # Voice
+    # "faster-whisper>=1.0.0",  # STT (optional, installed on Pi)
+    # "edge-tts>=6.1.0",        # TTS (optional, installed on Pi)
+    # Utils
+    "numpy>=1.26.0",
+    "scipy>=1.11.0",
+    "pillow>=10.0.0",
+    # Logging
+    "loguru>=0.7.0",
+]
+
+[project.optional-dependencies]
+pi = [
+    # Install on the Pi: pip install -e ".[pi]"
+    "lgpio>=0.2.2",
+    "smbus2>=0.4.3",
+    "picamera2>=0.3.12",
+    "adafruit-circuitpython-pca9685>=3.4.0",
+    "adafruit-circuitpython-mpu6050>=3.0.0",
+    "adafruit-circuitpython-ssd1306>=2.3.0",
+    "rpi_ws2812>=4.0.0",
+    "faster-whisper>=1.0.0",
+    "edge-tts>=6.1.0",
+    "opencv-python-headless>=4.8.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.2.0",
+    "httpx>=0.25.0",  # for testing FastAPI
+]
+
+[project.urls]
+Homepage = "https://github.com/drwjkirkpatrick-web/weaver"
+Repository = "https://github.com/drwjkirkpatrick-web/weaver"
+Issues = "https://github.com/drwjkirkpatrick-web/weaver/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["weaver*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+timeout = 30
+markers = [
+    "hardware: requires real Raspberry Pi hardware (deselect with -m 'not hardware')",
+]

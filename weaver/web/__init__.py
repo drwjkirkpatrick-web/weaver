@@ -1,0 +1,1 @@
+"""Weaver web: FastAPI dashboard, WebSocket real-time control."""

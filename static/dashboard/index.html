@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🕷️ Weaver Robot Brain</title>
+    <style>
+        /* ─── Dark theme dashboard ─── */
+        :root {
+            --bg: #0d1117;
+            --card: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent: #58a6ff;
+            --green: #3fb950;
+            --orange: #d29922;
+            --red: #f85149;
+            --purple: #bc8cff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            padding: 12px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        .header h1 { font-size: 1.3rem; }
+        .header .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .badge-ok { background: rgba(63,185,80,0.2); color: var(--green); }
+        .badge-warn { background: rgba(210,153,34,0.2); color: var(--orange); }
+        .badge-error { background: rgba(248,81,73,0.2); color: var(--red); }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .card h2 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+            letter-spacing: 0.05em;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 0.95rem;
+        }
+        .stat-label { color: var(--text-dim); }
+        .stat-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+        .value-ok { color: var(--green); }
+        .value-warn { color: var(--orange); }
+        .value-error { color: var(--red); }
+        
+        /* ─── Control buttons ─── */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .btn {
+            padding: 12px 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--card);
+            color: var(--text);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+            user-select: none;
+        }
+        .btn:hover { border-color: var(--accent); background: rgba(88,166,255,0.1); }
+        .btn:active { transform: scale(0.95); }
+        .btn-estop {
+            background: rgba(248,81,73,0.15);
+            border-color: var(--red);
+            color: var(--red);
+            font-weight: 700;
+            grid-column: span 5;
+            padding: 16px;
+            font-size: 1.1rem;
+        }
+        .btn-estop:hover { background: rgba(248,81,73,0.3); }
+        .btn-estop-clear { grid-column: span 5; }
+        
+        /* ─── Voice input ─── */
+        .voice-input {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .voice-input input {
+            flex: 1;
+            padding: 10px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+        .voice-input input:focus { outline: none; border-color: var(--accent); }
+        
+        /* ─── Camera feed ─── */
+        .camera-feed {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #000;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+        .camera-feed img { max-width: 100%; border-radius: 6px; }
+        
+        /* ─── Event log ─── */
+        .event-log {
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+        .event-log div { padding: 2px 0; border-bottom: 1px solid rgba(48,54,61,0.3); }
+        .event-time { color: var(--text-dim); }
+        .event-type { color: var(--accent); }
+        .event-source { color: var(--purple); }
+        
+        /* ─── Battery bar ─── */
+        .bar {
+            height: 8px;
+            background: var(--bg);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        /* ─── Speed slider ─── */
+        .slider-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+        .slider-row input[type=range] { flex: 1; }
+        .slider-value { min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+        
+        @media (max-width: 600px) {
+            .controls { grid-template-columns: repeat(3, 1fr); }
+            .btn-estop { grid-column: span 3; }
+            .btn-estop-clear { grid-column: span 3; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ─── Header ─── -->
+    <div class="header">
+        <h1>🕷️ Weaver Robot Brain</h1>
+        <div>
+            <span class="status-badge badge-ok" id="status-badge">CONNECTING...</span>
+        </div>
+    </div>
+
+    <!-- ─── Sensor Grid ─── -->
+    <div class="grid">
+        <!-- Battery -->
+        <div class="card">
+            <h2>🔋 Battery</h2>
+            <div class="stat-row">
+                <span class="stat-label">Voltage</span>
+                <span class="stat-value" id="battery-voltage">8.40V</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Level</span>
+                <span class="stat-value" id="battery-percent">100%</span>
+            </div>
+            <div class="bar"><div class="bar-fill" id="battery-bar" style="width:100%;background:var(--green)"></div></div>
+        </div>
+
+        <!-- Temperature -->
+        <div class="card">
+            <h2>🌡️ CPU Temp</h2>
+            <div class="stat-row">
+                <span class="stat-label">Temperature</span>
+                <span class="stat-value" id="cpu-temp">45.0°C</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Status</span>
+                <span class="stat-value value-ok" id="temp-status">Normal</span>
+            </div>
+        </div>
+
+        <!-- Ultrasonic -->
+        <div class="card">
+            <h2>📡 Ultrasonic</h2>
+            <div class="stat-row">
+                <span class="stat-label">Distance</span>
+                <span class="stat-value" id="obstacle-distance">--- cm</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Obstacle</span>
+                <span class="stat-value value-ok" id="obstacle-status">Clear</span>
+            </div>
+        </div>
+
+        <!-- IMU -->
+        <div class="card">
+            <h2>📐 Orientation</h2>
+            <div class="stat-row">
+                <span class="stat-label">Body Tilt</span>
+                <span class="stat-value" id="body-tilt">0.0°</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Status</span>
+                <span class="stat-value value-ok" id="tilt-status">Level</span>
+            </div>
+        </div>
+
+        <!-- Safety -->
+        <div class="card">
+            <h2>🛡️ Safety</h2>
+            <div class="stat-row">
+                <span class="stat-label">Level</span>
+                <span class="stat-value" id="safety-level">CHILD</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Violations</span>
+                <span class="stat-value" id="safety-violations">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Motion</span>
+                <span class="stat-value" id="motion-allowed">Allowed</span>
+            </div>
+        </div>
+
+        <!-- LLM -->
+        <div class="card">
+            <h2>🧠 LLM Brain</h2>
+            <div class="stat-row">
+                <span class="stat-label">Mode</span>
+                <span class="stat-value" id="llm-mode">ollama_cloud</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Status</span>
+                <span class="stat-value" id="llm-status">Idle</span>
+            </div>
+            <button class="btn" onclick="swapLLM()" style="margin-top:8px;width:100%">Swap Cloud/Local</button>
+        </div>
+    </div>
+
+    <!-- ─── Camera Feed ─── -->
+    <div class="card" style="margin-bottom:12px;">
+        <h2>📷 Camera Feed</h2>
+        <div class="camera-feed" id="camera-feed">
+            <span>Camera stream offline</span>
+        </div>
+    </div>
+
+    <!-- ─── Controls ─── -->
+    <div class="card" style="margin-bottom:12px;">
+        <h2>🎮 Motion Controls</h2>
+        <div class="controls">
+            <div></div>
+            <button class="btn" onpointerdown="sendCmd('forward')" onpointerup="sendCmd('stop')">⬆️ Forward</button>
+            <div></div>
+            <button class="btn" onpointerdown="sendCmd('backward')" onpointerup="sendCmd('stop')">⬇️ Backward</button>
+            <div></div>
+            
+            <button class="btn" onpointerdown="sendCmd('turn_left')" onpointerup="sendCmd('stop')">⬅️ Turn L</button>
+            <button class="btn" onclick="sendCmd('stop')">🛑 Stop</button>
+            <button class="btn" onpointerdown="sendCmd('turn_right')" onpointerup="sendCmd('stop')">➡️ Turn R</button>
+            <button class="btn" onclick="sendCmd('left')" onpointerup="sendCmd('stop')">⬅️ Strafe L</button>
+            <button class="btn" onclick="sendCmd('right')" onpointerup="sendCmd('stop')">➡️ Strafe R</button>
+            
+            <button class="btn" onclick="sendAction('stand')">🦵 Stand</button>
+            <button class="btn" onclick="sendAction('sit')">🪑 Sit</button>
+            <button class="btn" onclick="sendAction('wave')">👋 Wave</button>
+            <button class="btn" onclick="sendAction('crouch')">⬇️ Crouch</button>
+            <button class="btn" onclick="sendAction('stand_tall')">⬆️ Tall</button>
+        </div>
+        
+        <div class="slider-row">
+            <span class="stat-label">Speed:</span>
+            <input type="range" id="speed-slider" min="0" max="100" value="50">
+            <span class="slider-value" id="speed-value">50%</span>
+        </div>
+        
+        <button class="btn btn-estop" onclick="estop()">🛑 EMERGENCY STOP</button>
+        <button class="btn btn-estop-clear" onclick="estopClear()">✅ Clear E-Stop</button>
+    </div>
+
+    <!-- ─── Voice Command ─── -->
+    <div class="card" style="margin-bottom:12px;">
+        <h2>🎤 Voice / Text Command</h2>
+        <div class="voice-input">
+            <input type="text" id="voice-text" placeholder="Type a command: 'walk forward', 'turn left', 'sit down'..." onkeydown="if(event.key==='Enter')sendVoice()">
+            <button class="btn" onclick="sendVoice()">Send</button>
+        </div>
+        <div class="stat-row" style="margin-top:8px;">
+            <span class="stat-label">Last heard:</span>
+            <span class="stat-value" id="last-voice">—</span>
+        </div>
+    </div>
+
+    <!-- ─── Event Log ─── -->
+    <div class="card">
+        <h2>📋 Event Log</h2>
+        <div class="event-log" id="event-log"></div>
+    </div>
+
+    <script>
+        // ─── WebSocket connection ───
+        let ws = null;
+        let speed = 0.5;
+
+        function connect() {
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${location.host}/ws`);
+            
+            ws.onopen = () => {
+                document.getElementById('status-badge').textContent = 'CONNECTED';
+                document.getElementById('status-badge').className = 'status-badge badge-ok';
+            };
+            
+            ws.onclose = () => {
+                document.getElementById('status-badge').textContent = 'DISCONNECTED';
+                document.getElementById('status-badge').className = 'status-badge badge-error';
+                setTimeout(connect, 2000);  // Auto-reconnect
+            };
+            
+            ws.onerror = (err) => {
+                console.error('WS error:', err);
+            };
+            
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                handleMessage(msg);
+            };
+        }
+
+        function handleMessage(msg) {
+            if (msg.type === 'state') {
+                updateState(msg.data);
+            } else if (msg.type === 'ack') {
+                console.log('ACK:', msg);
+            } else if (msg.type === 'error') {
+                console.error('Server error:', msg.message);
+            }
+        }
+
+        function updateState(s) {
+            // Battery
+            document.getElementById('battery-voltage').textContent = s.battery_voltage.toFixed(2) + 'V';
+            document.getElementById('battery-percent').textContent = s.battery_percent.toFixed(0) + '%';
+            const batBar = document.getElementById('battery-bar');
+            batBar.style.width = s.battery_percent + '%';
+            batBar.style.background = s.battery_percent > 50 ? 'var(--green)' : 
+                                       s.battery_percent > 20 ? 'var(--orange)' : 'var(--red)';
+            
+            // Temperature
+            document.getElementById('cpu-temp').textContent = s.cpu_temp.toFixed(1) + '°C';
+            const tempEl = document.getElementById('cpu-temp');
+            const tempStatus = document.getElementById('temp-status');
+            if (s.cpu_temp > 80) { tempEl.className = 'stat-value value-error'; tempStatus.textContent='CRITICAL'; tempStatus.className='stat-value value-error'; }
+            else if (s.cpu_temp > 70) { tempEl.className = 'stat-value value-warn'; tempStatus.textContent='Warning'; tempStatus.className='stat-value value-warn'; }
+            else { tempEl.className = 'stat-value value-ok'; tempStatus.textContent='Normal'; tempStatus.className='stat-value value-ok'; }
+            
+            // Obstacle
+            if (s.obstacle_distance !== null) {
+                document.getElementById('obstacle-distance').textContent = s.obstacle_distance.toFixed(0) + ' cm';
+                const obsStatus = document.getElementById('obstacle-status');
+                if (s.obstacle_distance < 30) { obsStatus.textContent = 'STOP!'; obsStatus.className = 'stat-value value-error'; }
+                else if (s.obstacle_distance < 60) { obsStatus.textContent = 'Close'; obsStatus.className = 'stat-value value-warn'; }
+                else { obsStatus.textContent = 'Clear'; obsStatus.className = 'stat-value value-ok'; }
+            }
+            
+            // Tilt
+            document.getElementById('body-tilt').textContent = s.body_tilt.toFixed(1) + '°';
+            const tiltStatus = document.getElementById('tilt-status');
+            if (Math.abs(s.body_tilt) > 30) { tiltStatus.textContent = 'TIPPED!'; tiltStatus.className = 'stat-value value-error'; }
+            else if (Math.abs(s.body_tilt) > 15) { tiltStatus.textContent = 'Tilted'; tiltStatus.className = 'stat-value value-warn'; }
+            else { tiltStatus.textContent = 'Level'; tiltStatus.className = 'stat-value value-ok'; }
+            
+            // Safety
+            document.getElementById('safety-level').textContent = s.safety_level.toUpperCase();
+            document.getElementById('safety-violations').textContent = s.safety_violations;
+            const motionEl = document.getElementById('motion-allowed');
+            if (s.estop_active) { motionEl.textContent = 'E-STOPPED'; motionEl.className = 'stat-value value-error'; }
+            else { motionEl.textContent = 'Allowed'; motionEl.className = 'stat-value value-ok'; }
+            
+            // LLM
+            document.getElementById('llm-mode').textContent = s.llm_mode;
+            const llmStatus = document.getElementById('llm-status');
+            if (s.llm_thinking) { llmStatus.textContent = 'Thinking...'; llmStatus.className = 'stat-value value-warn'; }
+            else { llmStatus.textContent = 'Idle'; llmStatus.className = 'stat-value value-ok'; }
+            
+            // Voice
+            document.getElementById('last-voice').textContent = s.last_voice_transcript || '—';
+        }
+
+        // ─── Commands ───
+        function sendCmd(direction) {
+            speed = document.getElementById('speed-slider').value / 100;
+            ws.send(JSON.stringify({type: 'command', direction, speed}));
+            logEvent('COMMAND', direction + ' @ ' + (speed*100).toFixed(0) + '%', 'web');
+        }
+
+        function sendAction(action) {
+            ws.send(JSON.stringify({type: 'command', direction: action, speed: 0.3, action: action}));
+            logEvent('ACTION', action, 'web');
+        }
+
+        function sendVoice() {
+            const text = document.getElementById('voice-text').value;
+            if (text) {
+                ws.send(JSON.stringify({type: 'voice', text}));
+                logEvent('VOICE', text, 'web');
+                document.getElementById('voice-text').value = '';
+            }
+        }
+
+        function estop() {
+            ws.send(JSON.stringify({type: 'estop'}));
+            logEvent('ESTOP', 'EMERGENCY STOP', 'web');
+        }
+
+        function estopClear() {
+            ws.send(JSON.stringify({type: 'estop_clear'}));
+            logEvent('ESTOP_CLEAR', 'Cleared', 'web');
+        }
+
+        function swapLLM() {
+            ws.send(JSON.stringify({type: 'llm_swap'}));
+        }
+
+        // ─── Event log ───
+        function logEvent(type, data, source) {
+            const log = document.getElementById('event-log');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.innerHTML = `<span class="event-time">${time}</span> <span class="event-type">${type}</span> <span class="event-source">[${source}]</span> ${data}`;
+            log.prepend(entry);
+            // Keep last 50 entries
+            while (log.children.length > 50) log.removeChild(log.lastChild);
+        }
+
+        // ─── Speed slider ───
+        document.getElementById('speed-slider').addEventListener('input', (e) => {
+            document.getElementById('speed-value').textContent = e.target.value + '%';
+        });
+
+        // ─── Keyboard controls ───
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowUp': sendCmd('forward'); break;
+                case 'ArrowDown': sendCmd('backward'); break;
+                case 'ArrowLeft': sendCmd('turn_left'); break;
+                case 'ArrowRight': sendCmd('turn_right'); break;
+                case ' ': e.preventDefault(); estop(); break;
+            }
+        });
+
+        // ─── Init ───
+        connect();
+        logEvent('SYSTEM', 'Dashboard loaded', 'web');
+    </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+# .gitignore — Weaver robot brain
+# ──────────────────────────────────────────────────────────────────────────
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+.eggs/
+*.whl
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Data (telemetry DB, logs, calibration data)
+weaver/data/
+*.db
+*.db-journal
+*.log
+
+# Camera captures
+captures/
+*.jpg
+*.png
+*.avi
+*.mp4
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Build artifacts
+*.spec
