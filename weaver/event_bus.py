@@ -83,6 +83,13 @@ class EventType(Enum):
     SYSTEM_ERROR = auto()           # Unhandled error
     MODULE_STATUS = auto()          # Module status update
     TELEMETRY_LOG = auto()          # Periodic telemetry record
+    
+    # Dance events
+    BEAT_DETECTED = auto()          # Beat detector found a beat
+    DANCE_STARTED = auto()          # Dance routine started
+    DANCE_MOVE = auto()             # A dance move is being executed
+    DANCE_COMPLETED = auto()        # Dance routine finished
+    DANCE_ABORTED = auto()          # Dance was aborted (safety)
 
 
 # ─── Event ─────────────────────────────────────────────────────────────

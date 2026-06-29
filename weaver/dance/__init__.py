@@ -1,0 +1,1 @@
+"""Weaver dance module: beat detection, dance engine, choreography, student API."""

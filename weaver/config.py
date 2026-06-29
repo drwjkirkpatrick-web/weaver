@@ -297,6 +297,25 @@ class KeepaliveConfig(BaseModel):
     edge_tts_interval: float = 600.0      # Every 10 minutes
 
 
+class DanceConfig(BaseModel):
+    """Dance module configuration."""
+    enabled: bool = True
+    # Default safety level for dancing: strict, normal, performance, disabled
+    safety_level: str = "strict"
+    # Beat detector
+    beat_detection_enabled: bool = True
+    beat_sample_rate: int = 22050
+    beat_fft_size: int = 1024
+    beat_hop_size: int = 512
+    beat_min_bpm: int = 60
+    beat_max_bpm: int = 200
+    beat_sensitivity: float = 1.5
+    beat_mock_bpm: float = 120.0
+    # Auto-dance when beat detected for > 8 consecutive beats
+    auto_dance: bool = False
+    auto_dance_min_confidence: float = 0.6
+
+
 class TelemetryConfig(BaseModel):
     """Wi-Fi telemetry and remote logging."""
     enabled: bool = True
@@ -306,6 +325,41 @@ class TelemetryConfig(BaseModel):
     persist_interval_seconds: float = 5.0
     # Max records to keep (auto-prune old data)
     max_records: int = 100_000
+
+
+class BeatDetectorConfig(BaseModel):
+    """Beat detection & BPM estimation for dance mode.
+
+    LEARNING NOTE: Beat detection analyses audio in the frequency domain
+    to find rhythmic pulses (drum kicks, bass notes). The detector computes
+    spectral flux (how fast the spectrum changes), finds onsets (sudden
+    energy increases), and estimates BPM via autocorrelation of the onset
+    envelope.
+
+    Sample rate is lower than STT (22050 vs 16000) — wait, it's HIGHER.
+    Why? Beat detection needs frequency resolution to separate bass from
+    treble. 22050 Hz gives 11 kHz bandwidth, enough for music. We could
+    go higher (44100 = CD quality) but 22050 halves the CPU load while
+    still capturing the rhythmic spectrum (bass and mid frequencies where
+    beats live).
+    """
+    enabled: bool = True
+    # ─── Audio capture ───
+    sample_rate: int = 22050          # Hz — lower than CD quality but enough for rhythm
+    fft_size: int = 1024              # FFT window size (power of 2 for efficiency)
+    hop_size: int = 512               # How far we advance between FFTs (50% overlap)
+    input_device_index: int = -1      # -1 = system default microphone
+    # ─── BPM search range ───
+    min_bpm: int = 60                 # Slowest beat we'll detect (ballad)
+    max_bpm: int = 200                # Fastest beat we'll detect (drum & bass)
+    # ─── Onset detection ───
+    sensitivity: float = 1.5          # Onset threshold multiplier (higher = fewer false beats)
+    # ─── Analysis cadence ───
+    analysis_interval_frames: int = 43  # Re-estimate BPM every ~1 second of audio
+    # ─── History ───
+    history_size: int = 200            # How many recent beats to keep for visualization
+    # ─── Mock mode ───
+    mock_bpm: float = 120.0            # Synthetic BPM for mock mode (no hardware)
 
 
 # ─── Main Config ─────────────────────────────────────────────────────────
@@ -347,12 +401,14 @@ class MainConfig(BaseSettings):
     telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
     phrase_cache: PhraseCacheConfig = Field(default_factory=PhraseCacheConfig)
     keepalive: KeepaliveConfig = Field(default_factory=KeepaliveConfig)
+    dance: DanceConfig = Field(default_factory=DanceConfig)
+    beat_detector: BeatDetectorConfig = Field(default_factory=BeatDetectorConfig)
     
-    # Enabled subsystems (toggle individual modules)
+    # Enabled subsystems
     enabled_modules: list[str] = Field(default=[
         "servo", "gait", "safety", "camera", "imu", "ultrasonic",
         "battery", "oled", "led", "voice", "cortex", "web", "thermal", "telemetry",
-        "phrase_cache", "keepalive",
+        "phrase_cache", "keepalive", "dance", "beat_detector",
     ])
 
 
