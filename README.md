@@ -22,6 +22,7 @@ Weaver is a complete AI robot brain that transforms the Adeept RaspClaws Hexapod
 | 🛡️ **Safety Governor** | Human-safe motion — child-safe defaults, obstacle avoidance, e-stop, tilt protection |
 | 🎮 **Fast Web Dashboard** | Real-time control via any browser — WebSocket, voice commands, camera feed |
 | 🎤 **Voice Control** | Whisper STT + Edge TTS — talk to your spider, it talks back |
+| 🎵 **Beat Detection & Dance** | Real-time FFT beat detection → autonomous dance engine with Macarena choreography |
 | 📡 **20 Pi Integrations** | Full utilization of Pi 5 hardware (see [INTEGRATIONS.md](INTEGRATIONS.md)) |
 | 📊 **Telemetry** | SQLite logging of all sensor data and events for analysis |
 | 🧪 **Mock Mode** | Full development without hardware — simulate everything |
