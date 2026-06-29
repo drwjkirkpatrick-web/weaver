@@ -558,6 +558,9 @@ class BeatDetector:
                         bpm_estimate=self._current_bpm,
                         beat_number=self._beat_count,
                     ))
+                    # Record in history too, so get_beat_history() works after
+                    # offline analysis (same as the live capture loop does).
+                    self._beat_history.append(beats[-1])
                     # Also publish to the bus so subscribers (dance engine,
                     # dashboard) react during offline playback/analysis.
                     await self._publish_beat(beats[-1])
